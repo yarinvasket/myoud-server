@@ -3,8 +3,6 @@ from flask_restful import Api, Resource
 import random
 import logging
 
-from requests import session
-
 logging.basicConfig(filename='log.log', encoding='utf-8', level=logging.DEBUG)
 
 app = Flask(__name__)
@@ -34,9 +32,8 @@ class Login(Resource):
             return {'message':'invalid format'}, 400
         return 200
 
-
 api.add_resource(Register, '/api/register')
-api.add_resource(Login, 'api/login')
+api.add_resource(Login, '/api/login')
 
 if __name__ == '__main__':
     app.run(debug=True)
