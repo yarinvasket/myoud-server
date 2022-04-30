@@ -3,7 +3,22 @@ from flask_restful import Api, Resource
 import random
 import logging
 
+allowedChars = set('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789./')
+
 logging.basicConfig(filename='log.log', encoding='utf-8', level=logging.DEBUG)
+
+'''Throw error if not an int'''
+def faultyType(var, typ : type):
+    if (not isinstance(var, typ)):
+        raise Exception('not a number')
+
+'''Check if given string is in the allowed chars set. This is done in order to ensure no sql injection attacks are possible'''
+def faultyString(var):
+    faultyType(var, str)
+
+    for c in var:
+        if (c not in allowedChars):
+            raise Exception('string is not in allowedChars')
 
 app = Flask(__name__)
 api = Api(app)
@@ -19,6 +34,11 @@ class Register(Resource):
         except Exception as e:
             logging.error('Register formatting error: ' + str(e))
             return {'message':'invalid format'}, 400
+        faultyString(user_name)
+        faultyString(public_key)
+        faultyString(signature)
+        faultyString(encrypted_private_key)
+        faultyString(hashed_password)
         return 200
 
 class Login(Resource):
@@ -30,6 +50,9 @@ class Login(Resource):
         except Exception as e:
             logging.error('Login formatting error: ' + str(e))
             return {'message':'invalid format'}, 400
+        faultyString(user_name)
+        faultyString(hashed_password)
+        faultyType(session_timeout, int)
         return 200
 
 api.add_resource(Register, '/api/register')
