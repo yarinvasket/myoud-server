@@ -3,7 +3,7 @@ from flask_restful import Api, Resource
 import random
 import logging
 
-allowedChars = set('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789./')
+allowedChars = set('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789./$')
 
 logging.basicConfig(filename='log.log', encoding='utf-8', level=logging.DEBUG)
 
