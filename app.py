@@ -34,11 +34,16 @@ class Register(Resource):
         except Exception as e:
             logging.error('Register formatting error: ' + str(e))
             return {'message':'invalid format'}, 400
-        faultyString(user_name)
-        faultyString(public_key)
-        faultyString(signature)
-        faultyString(encrypted_private_key)
-        faultyString(hashed_password)
+        
+        try:
+            faultyString(user_name)
+            faultyString(public_key)
+            faultyString(signature)
+            faultyString(encrypted_private_key)
+            faultyString(hashed_password)
+        except Exception as e:
+            logging.error('Register formatting error: ' + str(e))
+            return {'message':'invalid format'}, 400
         return 200
 
 class Login(Resource):
@@ -50,9 +55,14 @@ class Login(Resource):
         except Exception as e:
             logging.error('Login formatting error: ' + str(e))
             return {'message':'invalid format'}, 400
-        faultyString(user_name)
-        faultyString(hashed_password)
-        faultyType(session_timeout, int)
+        
+        try:
+            faultyString(user_name)
+            faultyString(hashed_password)
+            faultyType(session_timeout, int)
+        except Exception as e:
+            logging.error('Login formatting error: ' + str(e))
+            return {'message':'invalid format'}, 400
         return 200
 
 api.add_resource(Register, '/api/register')
