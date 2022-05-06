@@ -1,11 +1,20 @@
 from flask import Flask, request
 from flask_restful import Api, Resource
-import random
 import logging
+import sqlite3
+import atexit
 
 allowedChars = set('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789./$')
 
 logging.basicConfig(filename='log.log', encoding='utf-8', level=logging.DEBUG)
+
+db = sqlite3.connect('database.db')
+
+@atexit.register
+def gb():
+    db.close()
+
+crsr = db.cursor()
 
 '''Throw error if not an int'''
 def faultyType(var, typ : type):
