@@ -2,19 +2,16 @@ from flask import Flask, request
 from flask_restful import Api, Resource
 import logging
 import sqlite3
-import atexit
+from queries import *
 
 allowedChars = set('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789./$')
 
 logging.basicConfig(filename='log.log', encoding='utf-8', level=logging.DEBUG)
 
-db = sqlite3.connect('database.db')
-
-@atexit.register
-def gb():
-    db.close()
-
-crsr = db.cursor()
+def connect_db():
+    db = sqlite3.connect('database.db')
+    cur = db.cursor()
+    return db, cur
 
 '''Throw error if not an int'''
 def faultyType(var, typ : type):
@@ -53,6 +50,21 @@ class Register(Resource):
         except Exception as e:
             logging.error('Register formatting error: ' + str(e))
             return {'message':'invalid format'}, 400
+
+        if (len(user_name) > 16 or len(user_name) <= 0):
+            logging.error('Register error: user name ' + user_name + ' is too long')
+            return {'message':'username is invalid'}, 400
+
+        db, cur = connect_db()
+        cur.execute(get_user, {"username": user_name})
+        if (cur.fetchall()):
+            logging.error('Register error: user ' + user_name + " already exists")
+            return {'message':'username is taken'}, 400
+
+        cur.execute(get_user_by_pk, {"pk": public_key})
+        if (cur.fetchall()):
+            logging.error('Register error: public key' + public_key + ' already exists')
+            return {'message':'public key is taken'}, 400
         return 200
 
 class Login(Resource):
