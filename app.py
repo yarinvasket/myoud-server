@@ -1,4 +1,3 @@
-import json
 import logging
 import sqlite3
 
@@ -43,7 +42,6 @@ class Register(Resource):
             signature = reqjson['signature']
             encrypted_private_key = reqjson['encrypted_private_key']
             hashed_password = reqjson['hashed_password']
-            salt = reqjson['salt']
         except Exception as e:
             logging.error('Register formatting error: ' + str(e) +\
                 ' The format isnt json, or is missing a field.')
@@ -56,7 +54,7 @@ class Register(Resource):
             faultyString(signature)
             faultyString(encrypted_private_key)
             faultyString(hashed_password)
-            faultyString(salt)
+            salt = hashed_password.split('$')[3][:22]
         except Exception as e:
             logging.error('Register formatting error: ' + str(e) +\
                 ' One of the fields is a wrong type.')
