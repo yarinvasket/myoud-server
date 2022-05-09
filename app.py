@@ -43,11 +43,10 @@ class Register(Resource):
             signature = reqjson['signature']
             encrypted_private_key = reqjson['encrypted_private_key']
             hashed_password = reqjson['hashed_password']
+            salt = reqjson['salt']
         except Exception as e:
             logging.error('Register formatting error: ' + str(e) +\
                 ' The format isnt json, or is missing a field.')
-#           TODO: DELETE THIS. POSSIBLE PASSWORD LOGGING
-            logging.error(request.json)
             return make_response(jsonify(message="invalid format"), 400)
         
 #       Check that every field is valid
@@ -57,6 +56,7 @@ class Register(Resource):
             faultyString(signature)
             faultyString(encrypted_private_key)
             faultyString(hashed_password)
+            faultyString(salt)
         except Exception as e:
             logging.error('Register formatting error: ' + str(e) +\
                 ' One of the fields is a wrong type.')
@@ -87,7 +87,7 @@ class Register(Resource):
 
 #       Finally, register the user
         cur.execute(register_user, (\
-            user_name, dhashed_password,\
+            user_name, dhashed_password, salt,\
             public_key, encrypted_private_key\
         ))
         db.commit()
