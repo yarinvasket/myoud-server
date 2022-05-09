@@ -1,7 +1,10 @@
-from flask import Flask, request
-from flask_restful import Api, Resource
 import logging
 import sqlite3
+
+import bcrypt
+from flask import Flask, request
+from flask_restful import Api, Resource
+
 from queries import *
 
 allowedChars = set('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789./$')
@@ -31,6 +34,7 @@ api = Api(app)
 
 class Register(Resource):
     def post(self):
+#       Get input from request and check that it is valid
         try:
             user_name = request.form['user_name']
             public_key = request.form['public_key']
@@ -41,6 +45,7 @@ class Register(Resource):
             logging.error('Register formatting error: ' + str(e))
             return {'message':'invalid format'}, 400
         
+#       Check that every field is valid
         try:
             faultyString(user_name)
             faultyString(public_key)
@@ -51,20 +56,37 @@ class Register(Resource):
             logging.error('Register formatting error: ' + str(e))
             return {'message':'invalid format'}, 400
 
+#       Check validity of the username
         if (len(user_name) > 16 or len(user_name) <= 0):
             logging.error('Register error: user name ' + user_name + ' is too long')
             return {'message':'username is invalid'}, 400
 
+#       Check that the username isn't taken
         db, cur = connect_db()
         cur.execute(get_user, {"username": user_name})
         if (cur.fetchall()):
             logging.error('Register error: user ' + user_name + " already exists")
             return {'message':'username is taken'}, 400
 
+#       Check that the public key isn't taken
         cur.execute(get_user_by_pk, {"pk": public_key})
         if (cur.fetchall()):
             logging.error('Register error: public key' + public_key + ' already exists')
             return {'message':'public key is taken'}, 400
+
+#       TODO: check that the signature is valid
+
+#       Salt and hash the password
+        dhashed_password = bcrypt.hashpw(bytes(hashed_password, 'utf-8'), bcrypt.gensalt())
+
+#       Finally, register the user
+        cur.execute(register_user, (\
+            user_name, dhashed_password,\
+            public_key, encrypted_private_key\
+        ))
+        db.commit()
+        db.close()
+
         return 200
 
 class Login(Resource):

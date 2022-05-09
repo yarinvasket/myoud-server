@@ -6,7 +6,6 @@ cur = db.cursor()
 q1 = '''CREATE TABLE users(
         username      text primary key,
         password      text,
-        salt          text,
         pk            text,
         sk            text,
         hierarchy     JSON1)'''
