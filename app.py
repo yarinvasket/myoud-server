@@ -16,12 +16,12 @@ def connect_db():
     cur = db.cursor()
     return db, cur
 
-'''Throw error if not an int'''
+# Throw error if not of type
 def faultyType(var, typ : type):
     if (not isinstance(var, typ)):
         raise Exception('not a number')
 
-'''Check if given string is in the allowed chars set. This is done in order to ensure no sql injection attacks are possible'''
+# Check if given string is in the allowed chars set. This is done in order to ensure no sql injection attacks are possible
 def faultyString(var):
     faultyType(var, str)
 
@@ -93,6 +93,37 @@ class Register(Resource):
 
         return 200
 
+class GetSalt(Resource):
+    def get(self):
+#       Get input from request and check that it is valid
+        try:
+            reqjson = request.json
+            user_name = reqjson['user_name']
+        except Exception as e:
+            logging.error('Get salt formatting error: ' + str(e) +\
+                ' The format isnt json, or is missing a field.')
+            return make_response(jsonify(message="invalid format"), 400)
+        
+#       Check that every field is valid
+        try:
+            faultyString(user_name)
+        except Exception as e:
+            logging.error('Get salt formatting error: ' + str(e) +\
+                ' One of the fields is a wrong type.')
+            return make_response(jsonify(message="invalid format"), 400)
+
+#       Check that user exists
+        db, cur = connect_db()
+        cur.execute(get_user, {"username": user_name})
+        user = cur.fetchall()
+        if (not user):
+            logging.error('Get salt error: user ' + user_name +\
+                ' does not exist')
+            return make_response(jsonify(message="user doesn't exist"), 400)
+        
+#       Finally, return the user's salt
+        return make_response(jsonify(salt=user[0][2]), 200)
+
 class Login(Resource):
     def post(self):
         try:
@@ -114,6 +145,7 @@ class Login(Resource):
         return 200
 
 api.add_resource(Register, '/api/register')
+api.add_resource(GetSalt, '/api/getsalt')
 api.add_resource(Login, '/api/login')
 
 if __name__ == '__main__':
