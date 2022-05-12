@@ -125,6 +125,7 @@ class Register(Resource):
         db.commit()
         db.close()
 
+        logging.info('User registered: ' + user_name)
         return 200
 
 class GetSalt(Resource):
