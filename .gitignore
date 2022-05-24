@@ -161,3 +161,6 @@ cython_debug/
 
 # Databases
 *.db
+
+# Server's global salt
+globalsalt.txt

@@ -13,7 +13,8 @@ from queries import *
 
 allowedChars = set('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789./$')
 
-user_name_salt = 'sZSRqcwWDNGv0BLg2xs7PO'
+f = open('globalsalt.txt', 'r')
+globalsalt = f.read()
 
 logging.basicConfig(filename='log.log', encoding='utf-8', level=logging.DEBUG)
 
@@ -50,7 +51,7 @@ class Register(Resource):
             encrypted_private_key = reqjson['encrypted_private_key']
             hashed_password = reqjson['hashed_password']
         except Exception as e:
-            logging.error('Register formatting error: ' + str(e) +\
+            logging.error('Register formatting: ' + str(e) +\
                 ' The format isnt json, or is missing a field.')
             return make_response(jsonify(message="invalid format"), 400)
         
@@ -64,26 +65,26 @@ class Register(Resource):
             public_key_decoded = base64.b64decode(public_key)
             signature_decoded = base64.b64decode(signature)
         except Exception as e:
-            logging.error('Register formatting error: ' + str(e) +\
+            logging.error('Register formatting: ' + str(e) +\
                 ' One of the fields is a wrong type.')
             return make_response(jsonify(message="invalid format"), 400)
 
 #       Check validity of the username
         if (len(user_name) > 16 or len(user_name) <= 0):
-            logging.error('Register error: user name ' + user_name + ' is too long')
+            logging.error('Register: user name ' + user_name + ' is too long')
             return make_response(jsonify(message="username is invalid"), 400)
 
 #       Check that the username isn't taken
         db, cur = connect_db()
         cur.execute(get_user, {"username": user_name})
         if (cur.fetchall()):
-            logging.error('Register error: user ' + user_name + " already exists")
+            logging.error('Register: user ' + user_name + " already exists")
             return make_response(jsonify(message="username is taken"), 400)
 
 #       Check that the public key isn't taken
         cur.execute(get_user_by_pk, {"pk": public_key})
         if (cur.fetchall()):
-            logging.error('Register error: public key ' + public_key + ' already exists')
+            logging.error('Register: public key ' + public_key + ' already exists')
             return make_response(jsonify(message="public key is taken"), 400)
 
 #       Check that the public key is valid
@@ -91,7 +92,7 @@ class Register(Resource):
             key = pgpy.PGPKey()
             key.parse(public_key_decoded)
         except Exception as e:
-            logging.error('Register formatting error: ' + str(e) +\
+            logging.error('Register formatting: ' + str(e) +\
                 ' Could not read public key ' + str(public_key_decoded))
             return make_response(jsonify(message="public key is invalid"), 400)
 
@@ -104,13 +105,13 @@ class Register(Resource):
             if (not ver):
                 raise Exception('Could not verify message')
         except Exception as e:
-            logging.error('Register error: invalid signature ' + str(signature_decoded) + ', ' +\
+            logging.error('Register: invalid signature ' + str(signature_decoded) + ', ' +\
                 message + ' ' + str(e))
             return make_response(jsonify(message="invalid signature"), 400)
 
 #       Check that the message is valid
-        if (message != user_name + user_name_salt):
-            logging.error('Register error: invalid message ' + message +\
+        if (message != user_name + globalsalt):
+            logging.error('Register: invalid message ' + message +\
                 ' for user name ' + user_name)
             return make_response(jsonify(message="invalid message"), 400)
 
@@ -125,7 +126,7 @@ class Register(Resource):
         db.commit()
         db.close()
 
-        logging.info('User registered: ' + user_name)
+        logging.info('Register: user registered: ' + user_name)
         return 200
 
 class GetSalt(Resource):
@@ -135,7 +136,7 @@ class GetSalt(Resource):
             reqjson = request.json
             user_name = reqjson['user_name']
         except Exception as e:
-            logging.error('Get salt formatting error: ' + str(e) +\
+            logging.error('Get salt formatting: ' + str(e) +\
                 ' The format isnt json, or is missing a field.')
             return make_response(jsonify(message="invalid format"), 400)
 
@@ -143,7 +144,7 @@ class GetSalt(Resource):
         try:
             faultyString(user_name)
         except Exception as e:
-            logging.error('Get salt formatting error: ' + str(e) +\
+            logging.error('Get salt formatting: ' + str(e) +\
                 ' One of the fields is a wrong type.')
             return make_response(jsonify(message="invalid format"), 400)
 
@@ -152,11 +153,12 @@ class GetSalt(Resource):
         cur.execute(get_user, {"username": user_name})
         user = cur.fetchall()
         if (not user):
-            logging.error('Get salt error: user ' + user_name +\
+            logging.error('Get salt: user ' + user_name +\
                 ' does not exist')
             return make_response(jsonify(message="user doesn't exist"), 400)
 
 #       Finally, return the user's salt
+        logging.info('Get salt: returned salt of user ' + user_name)
         return make_response(jsonify(salt=user[0][2]), 200)
 
 class Login(Resource):
@@ -167,7 +169,7 @@ class Login(Resource):
             hashed_password = reqjson['hashed_password']
             session_timeout = reqjson['session_timeout']
         except Exception as e:
-            logging.error('Login formatting error: ' + str(e))
+            logging.error('Login formatting: ' + str(e))
             return make_response(jsonify(message='invalid format'), 400)
         
         try:
@@ -175,12 +177,14 @@ class Login(Resource):
             faultyString(hashed_password)
             faultyType(session_timeout, int)
         except Exception as e:
-            logging.error('Login formatting error: ' + str(e))
+            logging.error('Login formatting: ' + str(e))
             return make_response(jsonify(message='invalid format'), 400)
+
+        logging.info('Login: user logged in: ' + user_name)
         return 200
 
 api.add_resource(Register, '/api/register')
-api.add_resource(GetSalt, '/api/getsalt')
+api.add_resource(GetSalt, '/api/get_salt')
 api.add_resource(Login, '/api/login')
 
 if __name__ == '__main__':
