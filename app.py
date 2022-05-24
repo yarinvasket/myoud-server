@@ -53,6 +53,8 @@ def validate_token(user_name, token):
     new_expiration = renew_token(timeout)
     cur.execute("update tokens set expiration=:expiration where token=:token",\
         {"expiration": new_expiration, "token": hashed_token})
+    db.commit()
+    db.close()
 
     return True
 
@@ -283,10 +285,38 @@ class Login(Resource):
         logging.info('Login: user logged in: ' + user_name)
         return make_response(jsonify(token=token, pk=user[0][4], sk=user[0][5]))
 
+class Logout(Resource):
+    def post(self):
+#       Get input from request and assure that it is valid
+        try:
+            reqjson = request.json
+            token = reqjson['token']
+        except Exception as e:
+            logging.error('Logout formatting: ' + str(e))
+            return make_response(jsonify(message='invalid format'), 400)
+
+#       Assure that every field is valid
+        try:
+            faultyString(token)
+        except Exception as e:
+            logging.error('Logout formatting: ' + str(e))
+            return make_response(jsonify(message='invalid format'), 400)
+
+#       Hash the token to delete
+        hashed_token = hashlib.sha256(token).hexdigest()
+
+#       Delete the token
+        db, cur = connect_db()
+        cur.execute("delete from tokens where token=:token",\
+            {"token": hashed_token})
+
+        return 200
+
 api.add_resource(Register, '/api/register')
 api.add_resource(GetSalt, '/api/get_salt')
 api.add_resource(GetSalt2, '/api/get_salt2')
 api.add_resource(Login, '/api/login')
+api.add_resource(Logout, '/api/logout')
 
 if __name__ == '__main__':
     app.run(debug=True)
