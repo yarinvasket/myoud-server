@@ -12,7 +12,7 @@ q1 = '''CREATE TABLE users(
         sk            text)'''
 
 q2 = '''CREATE TABLE tokens(
-        uuid          text primary key,
+        token         text primary key,
         user          text,
         expiration    integer,
         timeout       integer)'''

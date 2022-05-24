@@ -21,13 +21,40 @@ globalsalt = f.read()
 
 logging.basicConfig(filename='log.log', encoding='utf-8', level=logging.DEBUG)
 
-def renew_token(timeout: int):
-    return int(time.time()) + timeout
-
 def connect_db():
     db = sqlite3.connect('database.db')
     cur = db.cursor()
     return db, cur
+
+def renew_token(timeout: int):
+    return int(time.time()) + timeout
+
+def validate_token(user_name, token):
+#   Hash the token since the database stores hashed tokens
+    hashed_token = hashlib.sha256(token).hexdigest()
+
+#   Check that the token exists for the user
+    db, cur = connect_db()
+    cur.execute("select * from tokens where token=:token and username=:username",\
+        {"token": hashed_token, "username": user_name})
+    user = cur.fetchall()
+    if (not user):
+        logging.error('Validate token: token ' + hashed_token + ' doesn\'t match user ' + user_name)
+        return False
+
+#   Check that the token is not expired
+    expiration = user[0][2]
+    if (0 < expiration < int(time.time())):
+        logging.error('Validate token: token ' + hashed_token + ' has expired in' + expiration)
+        return False
+
+#   Renew the token
+    timeout = user[0][3]
+    new_expiration = renew_token(timeout)
+    cur.execute("update tokens set expiration=:expiration where token=:token",\
+        {"expiration": new_expiration, "token": hashed_token})
+
+    return True
 
 # Throw error if not of type
 def faultyType(var, typ : type):
@@ -242,13 +269,15 @@ class Login(Resource):
         token = str(secrets.token_bytes(16), 'utf-8')
 
 #       Hash and save the token
-        hashed_token = hashlib.sha256(token)
+        hashed_token = hashlib.sha256(token).hexdigest()
         if (session_timeout == 0):
             expiration = 0
         else:
             expiration = renew_token(session_timeout)
         cur.execute('insert into tokens values (?, ?, ?, ?)', \
             hashed_token, user_name, expiration, session_timeout)
+        db.commit()
+        db.close()
 
 #       Respond with the token, public key and encrypted private key
         logging.info('Login: user logged in: ' + user_name)
