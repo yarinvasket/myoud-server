@@ -15,6 +15,7 @@ from pgpy.constants import (CompressionAlgorithm, HashAlgorithm, KeyFlags,
 from queries import *
 
 allowedChars = set('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789./$')
+allowedPath = set('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789/')
 
 f = open('globalsalt.txt', 'r')
 globalsalt = f.read()
@@ -26,20 +27,23 @@ def connect_db():
     cur = db.cursor()
     return db, cur
 
+def hash_token(token):
+    return hashlib.sha256(token).hexdigest()
+
 def renew_token(timeout: int):
     return int(time.time()) + timeout
 
-def validate_token(user_name, token):
+def validate_token(token):
 #   Hash the token since the database stores hashed tokens
-    hashed_token = hashlib.sha256(token).hexdigest()
+    hashed_token = hash_token(token)
 
 #   Check that the token exists for the user
     db, cur = connect_db()
-    cur.execute("select * from tokens where token=:token and username=:username",\
-        {"token": hashed_token, "username": user_name})
+    cur.execute("select * from tokens where token=:token",\
+        {"token": hashed_token})
     user = cur.fetchall()
     if (not user):
-        logging.error('Validate token: token ' + hashed_token + ' doesn\'t match user ' + user_name)
+        logging.error('Validate token: token ' + hashed_token + ' is not in the tokens table')
         return False
 
 #   Check that the token is not expired
@@ -56,7 +60,7 @@ def validate_token(user_name, token):
     db.commit()
     db.close()
 
-    return True
+    return user[0][1], hashed_token
 
 # Throw error if not of type
 def faultyType(var, typ : type):
@@ -70,6 +74,14 @@ def faultyString(var):
     for c in var:
         if (c not in allowedChars):
             raise Exception('string is not in allowedChars')
+
+# Check if a given string is in the allowed path set. Prevents regex injection
+def faultyPath(var):
+    faultyType(var, str)
+
+    for c in var:
+        if (c not in allowedPath):
+            raise Exception('string is not in allowedPath')
 
 app = Flask(__name__)
 api = Api(app)
@@ -153,6 +165,15 @@ class Register(Resource):
 
 #       Salt and hash the password
         dhashed_password = bcrypt.hashpw(bytes(hashed_password, 'utf-8'), bcrypt.gensalt())
+
+#       Create a file table for the user
+        cur.execute('''create table :path(
+            name          text primary key,
+            content       blob,
+            date          integer,
+            key           text,
+            is_folder     integer)''',\
+                {"path": user_name})
 
 #       Finally, register the user
         cur.execute(register_user, (\
@@ -303,7 +324,7 @@ class Logout(Resource):
             return make_response(jsonify(message='invalid format'), 400)
 
 #       Hash the token to delete
-        hashed_token = hashlib.sha256(token).hexdigest()
+        hashed_token = hash_token(token)
 
 #       Delete the token
         db, cur = connect_db()
@@ -312,11 +333,74 @@ class Logout(Resource):
 
         return 200
 
+class GetPath(Resource):
+    def post(self):
+#       Get input from request and assure that it is valid
+        try:
+            reqjson = request.json
+            token = reqjson['token']
+            path = reqjson['path']
+        except Exception as e:
+            logging.error('GetPath formatting: ' + str(e))
+            return make_response(jsonify(message='invalid format'), 400)
+
+#       Assure that every field is valid
+        try:
+            faultyString(token)
+            faultyPath(path)
+        except Exception as e:
+            logging.error('GetPath formatting: ' + str(e))
+            return make_response(jsonify(message='invalid format'), 400)
+
+#       Validate token
+        user_name, hashed_token = validate_token(token)
+        if (not user_name):
+            logging.error('GetPath: token ' + hashed_token + ' is invalid')
+        
+#       Seperate between personal and shared files
+        paths = path.split('/')
+        if (paths[0] == "private"):
+#           Select all files that are the sub directory of path
+            actual_path = user_name + '/' + '/'.join(paths[1::])
+            db, cur = connect_db()
+            cur.execute("select name, date, key, is_folder from :path",\
+                {"path": actual_path})
+            files = cur.fetchall()
+            db.close()
+
+#           Cut the path out of the name
+            for i in range(len(files)):
+                files[i][0] = files[i][0].split('/')[-1]
+            
+#           Respond with the files
+            logging.info('GetPath: User ' + user_name + ' got path ' + path)
+            return make_response(jsonify(files), 200)
+
+        elif (paths[0] == "shared"):
+#           Get all files shared with user
+            db, cur = connect_db()
+            cur.execute("select key, name, date from shares where username=:username",\
+                {"username": user_name})
+            shared = cur.fetchall()
+            db.close()
+
+#           Cut the path out of the name
+            for i in range(len(shared)):
+                shared[i][1] = shared[i][1].split('/')[-1]
+
+            logging.info('GetPath: User ' + user_name + ' got path ' + path)
+            return make_response(jsonify(shared), 200)
+
+        else:
+            logging.error('GetPath: path ' + path + ' doesn\'t begin with shared/ or private/')
+            return make_response(jsonify(message='invalid format'), 400)
+
 api.add_resource(Register, '/api/register')
 api.add_resource(GetSalt, '/api/get_salt')
 api.add_resource(GetSalt2, '/api/get_salt2')
 api.add_resource(Login, '/api/login')
 api.add_resource(Logout, '/api/logout')
+api.add_resource(GetPath, '/api/get_path')
 
 if __name__ == '__main__':
     app.run(debug=True)

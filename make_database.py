@@ -17,15 +17,15 @@ q2 = '''CREATE TABLE tokens(
         expiration    integer,
         timeout       integer)'''
 
-q3 = '''CREATE TABLE files(
-        name          text primary key,
-        content       blob,
-        date          integer,
-        usernameskeys JSON1)'''
+q4 = '''CREATE TABLE shares(
+        username      text primary key,
+        key           text,
+        name          text,
+        date          integer)'''
 
 cur.execute(q1)
 cur.execute(q2)
-cur.execute(q3)
+cur.execute(q4)
 
 db.commit()
 db.close()
