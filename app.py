@@ -1,8 +1,10 @@
 import base64
+from email import message
 import hashlib
 import logging
 import secrets
 import sqlite3
+from this import d
 import time
 
 import bcrypt
@@ -506,6 +508,38 @@ class ShareFile(Resource):
 
 #       Respond with success
         return 200
+
+class GetPublicKey(Resource):
+    def post(self):
+#       Get input from request and assure that it is valid
+        try:
+            reqjson = request.json
+            user_name = reqjson['user_name']
+        except Exception as e:
+            logging.error('ShareFile formatting: ' + str(e))
+            return make_response(jsonify(message='invalid format'), 400)
+
+#       Assure that every field is valid
+        try:
+            faultyString(user_name)
+        except Exception as e:
+            logging.error('ShareFile formatting: ' + str(e))
+            return make_response(jsonify(message='invalid format'), 400)
+
+#       Assure that user exists
+        db, cur = connect_db()
+        cur.execute("select pk from users where username=:username",\
+            {"username": user_name})
+        pk = cur.fetchall()
+        if (not pk):
+            logging.error('GetPublicKey: user ' + user_name + ' doesn\'t exist')
+            return make_response(jsonify(message='user doesn\'t exist'), 400)
+
+#       Return the public key
+        db.close()
+        pk = pk[0][0]
+        logging.info('GetPublicKey: returned public key of user ' + user_name)
+        return make_response(jsonify(pk=pk), 200)
 
 api.add_resource(Register, '/register')
 api.add_resource(GetSalt, '/get_salt')
