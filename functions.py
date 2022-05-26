@@ -1,10 +1,13 @@
 import hashlib
 import logging
 import sqlite3
+import string
 import time
 
-allowedChars = set('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789./$')
-allowedPath = set('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789/')
+lettersdigits = string.ascii_letters + string.digits + '_-'
+allowedName = set(lettersdigits)
+allowedPath = set(lettersdigits + '/')
+allowedChars = set(lettersdigits + './$')
 
 def connect_db():
     db = sqlite3.connect('database.db')
@@ -120,6 +123,33 @@ def faultyPath(var):
     for c in var:
         if (c not in allowedPath):
             raise Exception('string is not in allowedPath')
+
+def faultyName(var : str):
+    """Safe-checks the string for path injection or sqli
+
+    Parameters
+    ----------
+    var: any
+        the variable that gets checked
+
+    Raises
+    ----------
+    Exception
+        if var is not string or if one of the characters is not allowed
+    """
+    faultyType(var, str)
+
+#   Assure no problematic characters
+    for c in var:
+        if (c not in allowedName):
+            raise Exception('string is not in allowedName')
+
+#   Assure username doesn't clash with one of the tables
+    lower = var.lower()
+    if lower == "users" or\
+       lower == "tokens" or\
+       lower == "shares":
+        raise Exception('string clashes with table names')
 
 def is_folder(path, cur : sqlite3.Cursor):
     cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=':path'",\

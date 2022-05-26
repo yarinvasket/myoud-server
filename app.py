@@ -42,7 +42,7 @@ class Register(Resource):
 
 #       Assure that every field is valid
         try:
-            faultyString(user_name)
+            faultyName(user_name)
             faultyString(message)
             faultyString(encrypted_private_key)
             faultyString(hashed_password)
@@ -136,7 +136,7 @@ class GetSalt(Resource):
 
 #       Assure that every field is valid
         try:
-            faultyString(user_name)
+            faultyName(user_name)
         except Exception as e:
             logging.error('Get salt formatting: ' + str(e) +\
                 ' One of the fields is a wrong type.')
@@ -168,7 +168,7 @@ class GetSalt2(Resource):
 
 #       Assure that every field is valid
         try:
-            faultyString(user_name)
+            faultyName(user_name)
         except Exception as e:
             logging.error('Get salt 2 formatting: ' + str(e) +\
                 ' One of the fields is a wrong type.')
@@ -201,7 +201,7 @@ class Login(Resource):
 
 #       Assure that every field is valid
         try:
-            faultyString(user_name)
+            faultyName(user_name)
             faultyString(hashed_password)
             faultyType(session_timeout, int)
         except Exception as e:
@@ -459,7 +459,7 @@ class ShareFile(Resource):
         try:
             faultyString(token)
             faultyPath(path)
-            faultyString(username)
+            faultyName(username)
             faultyString(file_key)
         except Exception as e:
             logging.error('ShareFile formatting: ' + str(e))
