@@ -18,6 +18,25 @@ def renew_token(timeout: int):
     return int(time.time()) + timeout
 
 def validate_token(token):
+    """Validates the token, returns either False or the username and hashed token
+
+    Parameters
+    ----------
+    token: str
+        the unhashed token to validate
+
+    Returns
+    ----------
+    str
+        the username this token belongs to
+    str
+        the sha256 hash of the token
+
+
+    OR bool
+        the validity of the token
+    """
+
 #   Hash the token since the database stores hashed tokens
     hashed_token = hash_token(token)
 
@@ -46,21 +65,56 @@ def validate_token(token):
 
     return user[0][1], hashed_token
 
-# Throw error if not of type
 def faultyType(var, typ : type):
+    """Validates the type
+
+    Parameters
+    ----------
+    var: any
+        the variable that gets checked
+    typ: type
+        the type to check against
+
+    Raises
+    ----------
+    Exception
+        if types do not match
+    """
     if (not isinstance(var, typ)):
         raise Exception('not a number')
 
-# Check if given string is in the allowed chars set. This is done in order to ensure no sql injection attacks are possible
 def faultyString(var):
+    """Safe-checks the string for SQL injection
+
+    Parameters
+    ----------
+    var: any
+        the variable that gets checked
+
+    Raises
+    ----------
+    Exception
+        if var is not string or if one of the characters is not allowed
+    """
     faultyType(var, str)
 
     for c in var:
         if (c not in allowedChars):
             raise Exception('string is not in allowedChars')
 
-# Check if a given string is in the allowed path set. Prevents regex injection
 def faultyPath(var):
+    """Safe-checks the string for regex injection
+
+    Parameters
+    ----------
+    var: any
+        the variable that gets checked
+
+    Raises
+    ----------
+    Exception
+        if var is not string or if one of the characters is not allowed
+    """
     faultyType(var, str)
 
     for c in var:
@@ -72,14 +126,24 @@ def is_folder(path, cur : sqlite3.Cursor):
             {"path": path})
     return cur.fetchall()
 
-# Deletes the folder in specified path. Must call db.commit() afterwards for this to take effect
-def delete_folder(path, db : sqlite3.Connection, cur : sqlite3.Cursor):
+def delete_folder(path : str, cur : sqlite3.Cursor):
+    """Deletes the folder and all of its subfiles in specified path. Must call db.commit() afterwards for this to take effect
+
+    Parameters
+    ----------
+    path: str
+        the server path to the folder. Is of the form "username/folder1/folder2/.../folder"
+    db: sqlite3.Connection
+        the sqlite3 database connection object
+    cur: sqlite3.Cursor
+        the sqlite3 cursor object to the database db
+    """
 #   Delete all subfolders
     cur.execute("select name from :path where is_folder=1",\
         {"path": path})
     folders = cur.fetchall()
     for folder in folders:
-        delete_folder(path + '/' + folder, db, cur)
+        delete_folder(path + '/' + folder, cur)
 
 #   Delete the folder itself
     cur.execute("DROP TABLE :path",\

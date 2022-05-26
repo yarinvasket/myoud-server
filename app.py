@@ -428,7 +428,7 @@ class DeleteFile(Resource):
         actual_path = user_name + path
         db, cur = connect_db()
         if (is_folder(actual_path, cur)):
-            delete_folder(actual_path, db, cur)
+            delete_folder(actual_path, cur)
             logging.info('DeleteFile: folder ' + actual_path + ' deleted')
         else:
             parent_dir = '/'.join(actual_path.split('/')[0:-2])
