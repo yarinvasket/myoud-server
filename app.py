@@ -523,14 +523,14 @@ class DeleteFile(Resource):
 #       Respond with success
         return 200
 
-api.add_resource(Register, '/api/register')
-api.add_resource(GetSalt, '/api/get_salt')
-api.add_resource(GetSalt2, '/api/get_salt2')
-api.add_resource(Login, '/api/login')
-api.add_resource(Logout, '/api/logout')
-api.add_resource(GetPath, '/api/get_path')
-api.add_resource(CreateFolder, '/api/create_folder')
-api.add_resource(DeleteFile, '/api/delete_file')
+api.add_resource(Register, '/register')
+api.add_resource(GetSalt, '/get_salt')
+api.add_resource(GetSalt2, '/get_salt2')
+api.add_resource(Login, '/login')
+api.add_resource(Logout, '/logout')
+api.add_resource(GetPath, '/get_path')
+api.add_resource(CreateFolder, '/create_folder')
+api.add_resource(DeleteFile, '/delete_file')
 
 if __name__ == '__main__':
     app.run(debug=True)
