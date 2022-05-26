@@ -149,7 +149,7 @@ class GetSalt(Resource):
         if (not user):
             logging.error('Get salt: user ' + user_name +\
                 ' does not exist')
-            return make_response(jsonify(message="user doesn't exist"), 400)
+            return make_response(jsonify(message="user doesn't exist"), 404)
 
 #       Finally, return the user's salt
         logging.info('Get salt: returned salt of user ' + user_name)
@@ -181,7 +181,7 @@ class GetSalt2(Resource):
         if (not user):
             logging.error('Get salt 2: user ' + user_name +\
                 ' does not exist')
-            return make_response(jsonify(message="user doesn't exist"), 400)
+            return make_response(jsonify(message="user doesn't exist"), 404)
 
 #       Finally, return the user's salt
         logging.info('Get salt 2: returned salt of user ' + user_name)
@@ -489,7 +489,7 @@ class ShareFile(Resource):
             {"username": username})
         if (not cur.fetchall()):
             logging.error('ShareFile: user ' + username + ' doesn\'t exist')
-            return make_response(jsonify(message='user doesn\'t exist'), 400)
+            return make_response(jsonify(message='user doesn\'t exist'), 404)
 
 #       Assure that file isn't already shared with user
         cur.execute("select username from shares where username=:username and name=:name",\
@@ -531,13 +531,42 @@ class GetPublicKey(Resource):
         pk = cur.fetchall()
         if (not pk):
             logging.error('GetPublicKey: user ' + user_name + ' doesn\'t exist')
-            return make_response(jsonify(message='user doesn\'t exist'), 400)
+            return make_response(jsonify(message='user doesn\'t exist'), 404)
 
 #       Return the public key
         db.close()
         pk = pk[0][0]
         logging.info('GetPublicKey: returned public key of user ' + user_name)
         return make_response(jsonify(pk=pk), 200)
+
+class UploadFile(Resource):
+    def post(self):
+#       Get input from request and assure that it is valid
+        try:
+            reqjson = request.json
+            token = reqjson['token']
+            path = reqjson['path']
+            username = reqjson['username']
+            file_key = reqjson['file_key']
+        except Exception as e:
+            logging.error('ShareFile formatting: ' + str(e))
+            return make_response(jsonify(message='invalid format'), 400)
+
+#       Assure that every field is valid
+        try:
+            faultyString(token)
+            faultyPath(path)
+            faultyString(username)
+            faultyString(file_key)
+        except Exception as e:
+            logging.error('ShareFile formatting: ' + str(e))
+            return make_response(jsonify(message='invalid format'), 400)
+
+#       Validate token
+        user_name, hashed_token = validate_token(token)
+        if (not user_name):
+            logging.error('ShareFile: token ' + hashed_token + ' is invalid')
+            return make_response(jsonify(message='invalid token'), 400)
 
 api.add_resource(Register, '/register')
 api.add_resource(GetSalt, '/get_salt')
