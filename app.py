@@ -83,6 +83,24 @@ def faultyPath(var):
         if (c not in allowedPath):
             raise Exception('string is not in allowedPath')
 
+def is_folder(path, cur : sqlite3.Cursor):
+    cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=':path'",\
+            {"path": path})
+    return cur.fetchall()
+
+# Deletes the folder in specified path. Must call db.commit() afterwards for this to take effect
+def delete_folder(path, db : sqlite3.Connection, cur : sqlite3.Cursor):
+#   Delete all subfolders
+    cur.execute("select name from :path where is_folder=1",\
+        {"path": path})
+    folders = cur.fetchall()
+    for folder in folders:
+        delete_folder(path + '/' + folder, db, cur)
+
+#   Delete the folder itself
+    cur.execute("DROP TABLE :path",\
+        {"path": path})
+
 app = Flask(__name__)
 api = Api(app)
 
@@ -411,7 +429,7 @@ class CreateFolder(Resource):
 #       Assure that every field is valid
         try:
             faultyString(token)
-            faultyPath(key)
+            faultyString(key)
             faultyPath(path)
         except Exception as e:
             logging.error('CreateFolder formatting: ' + str(e))
@@ -448,16 +466,61 @@ class CreateFolder(Resource):
 #       Create the folder
         cur.execute("insert into ? values (?, ?, ?, ?, ?)",\
             (parent_dir, folder_name, None, int(time.time()), key, 0))
-        cur.execute('''CREATE TABLE :path(
-                    name     text primary key,
-                    content  blob,
-                    date     integer,
-                    key      text,
-                    isFolder integer)''',\
-                        {"path": actual_path})
+        cur.execute('''create table :path(
+            name          text primary key,
+            content       blob,
+            date          integer,
+            key           text,
+            is_folder     integer)''',\
+                {"path": actual_path})
+        db.commit()
+        db.close()
 
 #       Respond with success
         logging.info('CreateFolder: folder ' + actual_path + ' was created for user ' + user_name)
+        return 200
+
+class DeleteFile(Resource):
+    def post(self):
+#       Get input from request and assure that it is valid
+        try:
+            reqjson = request.json
+            token = reqjson['token']
+            path = reqjson['path']
+        except Exception as e:
+            logging.error('DeleteFile formatting: ' + str(e))
+            return make_response(jsonify(message='invalid format'), 400)
+
+#       Assure that every field is valid
+        try:
+            faultyString(token)
+            faultyPath(path)
+        except Exception as e:
+            logging.error('DeleteFile formatting: ' + str(e))
+            return make_response(jsonify(message='invalid format'), 400)
+
+#       Validate token
+        user_name, hashed_token = validate_token(token)
+        if (not user_name):
+            logging.error('DeleteFile: token ' + hashed_token + ' is invalid')
+            return make_response(jsonify(message='invalid token'), 400)
+
+#       Determine whether file or folder
+        actual_path = user_name + path
+        db, cur = connect_db()
+        if (is_folder(actual_path, cur)):
+            delete_folder(actual_path, db, cur)
+            logging.info('DeleteFile: folder ' + actual_path + ' deleted')
+        else:
+            parent_dir = '/'.join(actual_path.split('/')[0:-2])
+            folder_name = user_name + path
+            cur.execute("delete from ? where name=?",\
+                (parent_dir, folder_name))
+            logging.info('DeleteFile: file ' + actual_path + ' deleted')
+        db.commit()
+        db.close()
+
+#       Respond with success
         return 200
 
 api.add_resource(Register, '/api/register')
@@ -466,6 +529,8 @@ api.add_resource(GetSalt2, '/api/get_salt2')
 api.add_resource(Login, '/api/login')
 api.add_resource(Logout, '/api/logout')
 api.add_resource(GetPath, '/api/get_path')
+api.add_resource(CreateFolder, '/api/create_folder')
+api.add_resource(DeleteFile, '/api/delete_file')
 
 if __name__ == '__main__':
     app.run(debug=True)
