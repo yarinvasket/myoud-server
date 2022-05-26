@@ -17,7 +17,7 @@ q2 = '''CREATE TABLE tokens(
         expiration    integer,
         timeout       integer)'''
 
-q4 = '''CREATE TABLE shares(
+q3 = '''CREATE TABLE shares(
         username      text primary key,
         key           text,
         name          text,
@@ -25,7 +25,7 @@ q4 = '''CREATE TABLE shares(
 
 cur.execute(q1)
 cur.execute(q2)
-cur.execute(q4)
+cur.execute(q3)
 
 db.commit()
 db.close()

@@ -187,7 +187,7 @@ class Register(Resource):
         return 200
 
 class GetSalt(Resource):
-    def get(self):
+    def post(self):
 #       Get input from request and Assure that it is valid
         try:
             reqjson = request.json
@@ -219,7 +219,7 @@ class GetSalt(Resource):
         return make_response(jsonify(salt=user[0][2]), 200)
 
 class GetSalt2(Resource):
-    def get(self):
+    def post(self):
 #       Get input from request and assure that it is valid
         try:
             reqjson = request.json
@@ -356,6 +356,7 @@ class GetPath(Resource):
         user_name, hashed_token = validate_token(token)
         if (not user_name):
             logging.error('GetPath: token ' + hashed_token + ' is invalid')
+            return make_response(jsonify(message='invalid token'), 400)
         
 #       Seperate between personal and shared files
         paths = path.split('/')
@@ -394,6 +395,70 @@ class GetPath(Resource):
         else:
             logging.error('GetPath: path ' + path + ' doesn\'t begin with shared/ or private/')
             return make_response(jsonify(message='invalid format'), 400)
+
+class CreateFolder(Resource):
+    def post(self):
+#       Get input from request and assure that it is valid
+        try:
+            reqjson = request.json
+            token = reqjson['token']
+            key = reqjson['key']
+            path = reqjson['path']
+        except Exception as e:
+            logging.error('CreateFolder formatting: ' + str(e))
+            return make_response(jsonify(message='invalid format'), 400)
+
+#       Assure that every field is valid
+        try:
+            faultyString(token)
+            faultyPath(key)
+            faultyPath(path)
+        except Exception as e:
+            logging.error('CreateFolder formatting: ' + str(e))
+            return make_response(jsonify(message='invalid format'), 400)
+
+#       Validate token
+        user_name, hashed_token = validate_token(token)
+        if (not user_name):
+            logging.error('CreateFolder: token ' + hashed_token + ' is invalid')
+            return make_response(jsonify(message='invalid token'), 400)
+
+#       Assure that no folder exists
+        actual_path = user_name + path
+        db, cur = connect_db()
+        cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=':path'",\
+            {"path": actual_path})
+        if (cur.fetchall()):
+            logging.error('CreateFolder: folder ' + actual_path + ' already exists')
+            return make_response(jsonify(message='a folder with this name already exists'), 400)
+
+#       Assure that no file exists
+        parent_dir = '/'.join(actual_path.split('/')[0:-2])
+        folder_name = path.split('/')[-1]
+        try:
+            cur.execute("select name from :path where name=:name",\
+                {"path": parent_dir, "name": folder_name})
+        except sqlite3.OperationalError as e:
+            logging.error('CreateFolder: ' + str(e))
+            return make_response(jsonify(message='invalid path'), 400)
+        if (cur.fetchall()):
+            logging.error('CreateFolder: file ' + actual_path + ' already exists')
+            return make_response(jsonify(message='a file with this name already exists'), 400)
+
+#       Create the folder
+        cur.execute("insert into ? values (?, ?, ?, ?, ?)",\
+            (parent_dir, folder_name, None, int(time.time()), key, 0))
+        cur.execute('''CREATE TABLE :path(
+                    name     text primary key,
+                    content  blob,
+                    date     integer,
+                    key      text,
+                    isFolder integer)''',\
+                        {"path": actual_path})
+
+#       Respond with success
+        logging.info('CreateFolder: folder ' + actual_path + ' was created for user ' + user_name)
+        return 200
 
 api.add_resource(Register, '/api/register')
 api.add_resource(GetSalt, '/api/get_salt')
