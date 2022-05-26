@@ -361,7 +361,7 @@ class CreateFolder(Resource):
             return make_response(jsonify(message='invalid token'), 400)
 
 #       Assure that no folder exists
-        actual_path = user_name + path
+        actual_path = user_name + '/' + path
         db, cur = connect_db()
         cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=':path'",\
             {"path": actual_path})
@@ -425,7 +425,7 @@ class DeleteFile(Resource):
             return make_response(jsonify(message='invalid token'), 400)
 
 #       Determine whether file or folder
-        actual_path = user_name + path
+        actual_path = user_name + '/' + path
         db, cur = connect_db()
         if (is_folder(actual_path, cur)):
             delete_folder(actual_path, cur)
@@ -475,7 +475,7 @@ class ShareFile(Resource):
 
 #       Assure that file exists
         db, cur = connect_db()
-        actual_path = user_name + path
+        actual_path = user_name + '/' + path
         file_name = path.split('/')[-1]
         cur.execute("select name from :path where name=:name and is_folder=0",\
             {"path": actual_path, "name": file_name})
