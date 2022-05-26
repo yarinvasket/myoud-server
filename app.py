@@ -442,6 +442,71 @@ class DeleteFile(Resource):
 #       Respond with success
         return 200
 
+class ShareFile(Resource):
+    def post(self):
+#       Get input from request and assure that it is valid
+        try:
+            reqjson = request.json
+            token = reqjson['token']
+            path = reqjson['path']
+            username = reqjson['username']
+            file_key = reqjson['file_key']
+        except Exception as e:
+            logging.error('ShareFile formatting: ' + str(e))
+            return make_response(jsonify(message='invalid format'), 400)
+
+#       Assure that every field is valid
+        try:
+            faultyString(token)
+            faultyPath(path)
+            faultyString(username)
+            faultyString(file_key)
+        except Exception as e:
+            logging.error('ShareFile formatting: ' + str(e))
+            return make_response(jsonify(message='invalid format'), 400)
+
+#       Validate token
+        user_name, hashed_token = validate_token(token)
+#       NOTE: username is the username of the shared user,
+#       while user_name is the username of the sharer
+        if (not user_name):
+            logging.error('ShareFile: token ' + hashed_token + ' is invalid')
+            return make_response(jsonify(message='invalid token'), 400)
+
+#       Assure that file exists
+        db, cur = connect_db()
+        actual_path = user_name + path
+        file_name = path.split('/')[-1]
+        cur.execute("select name from :path where name=:name and is_folder=0",\
+            {"path": actual_path, "name": file_name})
+        file = cur.fetchall()
+        if (not file):
+            logging.error('ShareFile: file ' + actual_path + ' doesn\'t exist')
+            return make_response(jsonify(message='invalid path'), 400)
+        
+#       Assure that user exists
+        cur.execute("select username from users where username=:username",\
+            {"username": username})
+        if (not cur.fetchall()):
+            logging.error('ShareFile: user ' + username + ' doesn\'t exist')
+            return make_response(jsonify(message='user doesn\'t exist'), 400)
+
+#       Assure that file isn't already shared with user
+        cur.execute("select username from shares where username=:username and name=:name",\
+            {"username": username, "name": actual_path})
+        if (cur.fetchall()):
+            logging.error('ShareFile: file ' + actual_path + ' already shared with user ' + username)
+            return make_response(jsonify(message='file already shared with user'), 400)
+
+#       Share the file
+        cur.execute("insert into shares values (?, ?, ?, ?)",\
+            (username, file_key, actual_path, int(time.time())))
+        db.commit()
+        db.close()
+
+#       Respond with success
+        return 200
+
 api.add_resource(Register, '/register')
 api.add_resource(GetSalt, '/get_salt')
 api.add_resource(GetSalt2, '/get_salt2')
@@ -450,6 +515,7 @@ api.add_resource(Logout, '/logout')
 api.add_resource(GetPath, '/get_path')
 api.add_resource(CreateFolder, '/create_folder')
 api.add_resource(DeleteFile, '/delete_file')
+api.add_resource(ShareFile, '/share_file')
 
 if __name__ == '__main__':
     app.run(debug=True)
