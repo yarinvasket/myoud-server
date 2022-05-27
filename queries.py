@@ -6,4 +6,6 @@ create_dir = '''create table :path(
             content       blob,
             date          integer,
             key           text,
-            is_folder     integer)'''
+            isfolder      integer,
+            namesig       text,
+            filesig       text)'''

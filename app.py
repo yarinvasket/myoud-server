@@ -378,8 +378,8 @@ class CreateFolder(Resource):
             return make_response(jsonify(message='a file with this name already exists'), 400)
 
 #       Create the folder
-        cur.execute("insert into ? values (?, ?, ?, ?, ?)",\
-            (parent_dir, folder_name, None, int(time.time()), key, 0))
+        cur.execute("insert into ? values (?, ?, ?, ?, ?, ?, ?)",\
+            (parent_dir, folder_name, None, int(time.time()), key, 1, None, None))
         cur.execute(create_dir,\
                 {"path": actual_path})
         db.commit()
@@ -528,35 +528,6 @@ class GetPublicKey(Resource):
         pk = pk[0][0]
         logging.info('GetPublicKey: returned public key of user ' + user_name)
         return make_response(jsonify(pk=pk), 200)
-
-class UploadFile(Resource):
-    def post(self):
-#       Get input from request and assure that it is valid
-        try:
-            reqjson = request.json
-            token = reqjson['token']
-            path = reqjson['path']
-            username = reqjson['username']
-            file_key = reqjson['file_key']
-        except Exception as e:
-            logging.error('ShareFile formatting: ' + str(e))
-            return make_response(jsonify(message='invalid format'), 400)
-
-#       Assure that every field is valid
-        try:
-            faultyString(token)
-            faultyPath(path)
-            faultyString(username)
-            faultyString(file_key)
-        except Exception as e:
-            logging.error('ShareFile formatting: ' + str(e))
-            return make_response(jsonify(message='invalid format'), 400)
-
-#       Validate token
-        user_name, hashed_token = validate_token(token)
-        if (not user_name):
-            logging.error('ShareFile: token ' + hashed_token + ' is invalid')
-            return make_response(jsonify(message='invalid token'), 400)
 
 api.add_resource(Register, '/register')
 api.add_resource(GetSalt, '/get_salt')
