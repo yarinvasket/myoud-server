@@ -346,6 +346,7 @@ class CreateFolder(Resource):
             faultyString(token)
             faultyString(key)
             faultyPath(path)
+            faultyString(pathsig)
         except Exception as e:
             logging.error('CreateFolder formatting: ' + str(e))
             return make_response(jsonify(message='invalid format'), 400)
