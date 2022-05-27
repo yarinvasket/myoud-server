@@ -104,12 +104,7 @@ class Register(Resource):
         dhashed_password = bcrypt.hashpw(bytes(hashed_password, 'utf-8'), bcrypt.gensalt())
 
 #       Create a file table for the user
-        cur.execute('''create table :path(
-            name          text primary key,
-            content       blob,
-            date          integer,
-            key           text,
-            is_folder     integer)''',\
+        cur.execute(create_dir,\
                 {"path": user_name})
 
 #       Finally, register the user
@@ -385,12 +380,7 @@ class CreateFolder(Resource):
 #       Create the folder
         cur.execute("insert into ? values (?, ?, ?, ?, ?)",\
             (parent_dir, folder_name, None, int(time.time()), key, 0))
-        cur.execute('''create table :path(
-            name          text primary key,
-            content       blob,
-            date          integer,
-            key           text,
-            is_folder     integer)''',\
+        cur.execute(create_dir,\
                 {"path": actual_path})
         db.commit()
         db.close()
