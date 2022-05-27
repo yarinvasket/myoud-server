@@ -169,7 +169,7 @@ def delete_folder(path : str, cur : sqlite3.Cursor):
         the sqlite3 cursor object to the database db
     """
 #   Delete all subfolders
-    cur.execute("select name from :path where is_folder=1",\
+    cur.execute("select name from :path where isfolder=1",\
         {"path": path})
     folders = cur.fetchall()
     for folder in folders:

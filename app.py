@@ -296,7 +296,7 @@ class GetPath(Resource):
 #           Select all files that are the sub directory of path
             actual_path = user_name + '/' + '/'.join(paths[1::])
             db, cur = connect_db()
-            cur.execute("select name, date, key, is_folder from :path",\
+            cur.execute("select name, date, key, isfolder, pathsig from :path",\
                 {"path": actual_path})
             files = cur.fetchall()
             db.close()
@@ -336,6 +336,7 @@ class CreateFolder(Resource):
             token = reqjson['token']
             key = reqjson['key']
             path = reqjson['path']
+            pathsig = reqjson['pathsig']
         except Exception as e:
             logging.error('CreateFolder formatting: ' + str(e))
             return make_response(jsonify(message='invalid format'), 400)
@@ -379,7 +380,7 @@ class CreateFolder(Resource):
 
 #       Create the folder
         cur.execute("insert into ? values (?, ?, ?, ?, ?, ?, ?)",\
-            (parent_dir, folder_name, None, int(time.time()), key, 1, None, None))
+            (parent_dir, folder_name, None, int(time.time()), key, 1, pathsig, None))
         cur.execute(create_dir,\
                 {"path": actual_path})
         db.commit()
@@ -467,7 +468,7 @@ class ShareFile(Resource):
         db, cur = connect_db()
         actual_path = user_name + '/' + path
         file_name = path.split('/')[-1]
-        cur.execute("select name from :path where name=:name and is_folder=0",\
+        cur.execute("select name from :path where name=:name and isfolder=0",\
             {"path": actual_path, "name": file_name})
         file = cur.fetchall()
         if (not file):

@@ -7,5 +7,5 @@ create_dir = '''create table :path(
             date          integer,
             key           text,
             isfolder      integer,
-            namesig       text,
+            pathsig       text,
             filesig       text)'''
