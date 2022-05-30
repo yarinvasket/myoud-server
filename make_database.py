@@ -19,9 +19,10 @@ q2 = '''CREATE TABLE tokens(
 
 q3 = '''CREATE TABLE shares(
         username      text primary key,
-        key           text,
         name          text,
-        date          integer)'''
+        date          integer,
+        key           text,
+        sharesig      text)'''
 
 cur.execute(q1)
 cur.execute(q2)

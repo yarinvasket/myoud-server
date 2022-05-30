@@ -298,12 +298,18 @@ class GetPath(Resource):
             db, cur = connect_db()
             cur.execute("select name, date, key, isfolder, pathsig from :path",\
                 {"path": actual_path})
-            files = cur.fetchall()
+            private = cur.fetchall()
             db.close()
+            files = list()
 
 #           Cut the path out of the name
-            for i in range(len(files)):
-                files[i][0] = files[i][0].split('/')[-1]
+            for file in private:
+                name = file[0].split('/')[-1]
+                date = file[1]
+                key = file[2]
+                isfolder = file[3]
+                pathsig = file[4]
+                files += (name, date, key, isfolder, pathsig)
             
 #           Respond with the files
             logging.info('GetPath: User ' + user_name + ' got path ' + path)
@@ -312,17 +318,26 @@ class GetPath(Resource):
         elif (paths[0] == "shared"):
 #           Get all files shared with user
             db, cur = connect_db()
-            cur.execute("select key, name, date from shares where username=:username",\
+            cur.execute("select name, date, key, sharesig from shares where username=:username",\
                 {"username": user_name})
             shared = cur.fetchall()
             db.close()
+            files = list()
 
 #           Cut the path out of the name
-            for i in range(len(shared)):
-                shared[i][1] = shared[i][1].split('/')[-1]
+            for file in shared:
+                paths = file[0].split('/')
+                name = paths[-1]
+                date = file[1]
+                key = file[2]
+                isfolder = 0
+                sharesig = file[3]
+#               Username of the sharer
+                username = paths[0]
+                files += (name, date, key, isfolder, sharesig, username)
 
             logging.info('GetPath: User ' + user_name + ' got path ' + path)
-            return make_response(jsonify(shared), 200)
+            return make_response(jsonify(files), 200)
 
         else:
             logging.error('GetPath: path ' + path + ' doesn\'t begin with shared/ or private/')
@@ -443,6 +458,7 @@ class ShareFile(Resource):
             path = reqjson['path']
             username = reqjson['username']
             file_key = reqjson['file_key']
+            sharesig = reqjson['sharesig']
         except Exception as e:
             logging.error('ShareFile formatting: ' + str(e))
             return make_response(jsonify(message='invalid format'), 400)
@@ -491,8 +507,8 @@ class ShareFile(Resource):
             return make_response(jsonify(message='file already shared with user'), 400)
 
 #       Share the file
-        cur.execute("insert into shares values (?, ?, ?, ?)",\
-            (username, file_key, actual_path, int(time.time())))
+        cur.execute("insert into shares values (?, ?, ?, ?, ?)",\
+            (username, actual_path, int(time.time()), file_key, sharesig))
         db.commit()
         db.close()
 
