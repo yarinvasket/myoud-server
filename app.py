@@ -30,7 +30,6 @@ class Register(Resource):
             reqjson = request.json
             user_name = reqjson['user_name']
             public_key = reqjson['public_key']
-            message = reqjson['message']
             signature = reqjson['signature']
             encrypted_private_key = reqjson['encrypted_private_key']
             hashed_password = reqjson['hashed_password']
@@ -43,7 +42,6 @@ class Register(Resource):
 #       Assure that every field is valid
         try:
             faultyName(user_name)
-            faultyString(message)
             faultyString(encrypted_private_key)
             faultyString(hashed_password)
             salt = hashed_password.split('$')[3][:22]
@@ -82,6 +80,7 @@ class Register(Resource):
             return make_response(jsonify(message="public key is invalid"), 400)
 
 #       Assure that the signature is valid
+        message = user_name + globalsalt
         try:
 #           Assure that this is a public key
             key = key.pubkey
@@ -93,12 +92,6 @@ class Register(Resource):
             logging.error('Register: invalid signature ' + str(signature_decoded) + ', ' +\
                 message + ' ' + str(e))
             return make_response(jsonify(message="invalid signature"), 400)
-
-#       Assure that the message is valid
-        if (message != user_name + globalsalt):
-            logging.error('Register: invalid message ' + message +\
-                ' for user name ' + user_name)
-            return make_response(jsonify(message="invalid message"), 400)
 
 #       Salt and hash the password
         dhashed_password = bcrypt.hashpw(bytes(hashed_password, 'utf-8'), bcrypt.gensalt())
@@ -469,6 +462,7 @@ class ShareFile(Resource):
             faultyPath(path)
             faultyName(username)
             faultyString(file_key)
+            faultyString(sharesig)
         except Exception as e:
             logging.error('ShareFile formatting: ' + str(e))
             return make_response(jsonify(message='invalid format'), 400)
