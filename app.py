@@ -214,7 +214,7 @@ class Login(Resource):
                 "incorrect login credentials"), 400)
 
 #       Generate a token
-        token = str(secrets.token_bytes(16), 'utf-8')
+        token = secrets.token_urlsafe(16)
 
 #       Hash and save the token
         hashed_token = hashlib.sha256(token).hexdigest()
@@ -243,7 +243,7 @@ class Logout(Resource):
 
 #       Assure that every field is valid
         try:
-            faultyString(token)
+            faultyName(token)
         except Exception as e:
             logging.error('Logout formatting: ' + str(e))
             return make_response(jsonify(message='invalid format'), 400)
@@ -271,7 +271,7 @@ class GetPath(Resource):
 
 #       Assure that every field is valid
         try:
-            faultyString(token)
+            faultyName(token)
             faultyPath(path)
         except Exception as e:
             logging.error('GetPath formatting: ' + str(e))
@@ -351,7 +351,7 @@ class CreateFolder(Resource):
 
 #       Assure that every field is valid
         try:
-            faultyString(token)
+            faultyName(token)
             faultyString(key)
             faultyPath(path)
             faultyString(pathsig)
@@ -412,7 +412,7 @@ class DeleteFile(Resource):
 
 #       Assure that every field is valid
         try:
-            faultyString(token)
+            faultyName(token)
             faultyPath(path)
         except Exception as e:
             logging.error('DeleteFile formatting: ' + str(e))
@@ -458,7 +458,7 @@ class ShareFile(Resource):
 
 #       Assure that every field is valid
         try:
-            faultyString(token)
+            faultyName(token)
             faultyPath(path)
             faultyName(username)
             faultyString(file_key)
