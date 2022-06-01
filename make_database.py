@@ -24,9 +24,22 @@ q3 = '''CREATE TABLE shares(
         key           text,
         sharesig      text)'''
 
+q4 = '''CREATE TABLE ustreams(
+        token         text primary key,
+        path          text,
+        key           text,
+        pathsig       text,
+        filesig       text)'''
+
+q5 = '''CREATE TABLE dstreams(
+        token         text primary key,
+        path          text)'''
+
 cur.execute(q1)
 cur.execute(q2)
 cur.execute(q3)
+cur.execute(q4)
+cur.execute(q5)
 
 db.commit()
 db.close()

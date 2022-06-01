@@ -18,6 +18,8 @@ from queries import *
 f = open('globalsalt.txt', 'r')
 globalsalt = f.read()
 
+chunk_size = 4096
+
 logging.basicConfig(filename='log.log', encoding='utf-8', level=logging.DEBUG)
 
 app = Flask(__name__)
@@ -541,6 +543,95 @@ class GetPublicKey(Resource):
         logging.info('GetPublicKey: returned public key of user ' + user_name)
         return make_response(jsonify(pk=pk), 200)
 
+class UploadFile(Resource):
+    def post(self):
+#       Get input from request and assure that it is valid
+        try:
+            reqjson = request.json
+            token = reqjson['token']
+            path = reqjson['path']
+            file_key = reqjson['file_key']
+            pathsig = reqjson['pathsig']
+            filesig = reqjson['filesig']
+        except Exception as e:
+            logging.error('UploadFile formatting: ' + str(e))
+            return make_response(jsonify(message='invalid format'), 400)
+
+#       Assure that every field is valid
+        try:
+            faultyName(token)
+            faultyPath(path)
+            faultyString(file_key)
+            faultyString(pathsig)
+            faultyString(filesig)
+        except Exception as e:
+            logging.error('UploadFile formatting: ' + str(e))
+            return make_response(jsonify(message='invalid format'), 400)
+
+#       Validate token
+        user_name, hashed_token = validate_token(token)
+        if (not user_name):
+            logging.error('UploadFile: token ' + hashed_token + ' is invalid')
+            return make_response(jsonify(message='invalid token'), 400)
+
+#       Open a stream
+        stream_token = secrets.token_urlsafe(16)
+        hashed_stream_token = hash_token(stream_token)
+        actual_path = user_name + '/' + path
+        db, cur = connect_db()
+        cur.execute("insert into ustreams values (?, ?, ?, ?, ?)",\
+            (hashed_stream_token, actual_path, file_key, pathsig, filesig))
+        db.commit()
+        db.close()
+
+#       Respond with the stream token
+        logging.info('UploadFile: responded with stream token: ' + hashed_stream_token)
+        return make_response(jsonify(token=stream_token))
+
+class UploadStream(Resource):
+    def post(self, token):
+#       Assure that every field is valid
+        try:
+            faultyName(token)
+        except Exception as e:
+            logging.error('UploadStream formatting: ' + str(e))
+            return make_response(jsonify(message='invalid format'), 400)
+
+#       Verify token
+        hashed_token = hash_token(token)
+        db, cur = connect_db()
+        cur.execute("select path, key, pathsig, filesig from ustreams where token=:token",\
+            {"token": hashed_token})
+        file = cur.fetchall()
+        if (not file):
+            logging.error('UploadStream: token is invalid')
+            return make_response(jsonify(message='invalid token'), 400)
+
+#       Get data from stream
+        f = bytes()
+        chunk_size = 4096
+        while True:
+            chunk = request.stream.read(chunk_size)
+            if (len(chunk) == 0):
+                break
+            f += chunk
+
+#       Extract file information
+        path = file[0][0]
+        key = file[0][1]
+        pathsig = file[0][2]
+        filesig = file[0][3]
+
+#       Write data to file
+        dirs = path.split('/')
+        parent_dir = '/'.join(dirs[0:-2])
+        file_name = dirs[-1]
+        cur.execute("insert into ? values (?, ?, ?, ?, ?, ?, ?)",\
+            (parent_dir, file_name, f, int(time.time()), key, 0, pathsig, filesig))
+        db.close()
+
+        return 200
+
 api.add_resource(Register, '/register')
 api.add_resource(GetSalt, '/get_salt')
 api.add_resource(GetSalt2, '/get_salt2')
@@ -550,6 +641,8 @@ api.add_resource(GetPath, '/get_path')
 api.add_resource(CreateFolder, '/create_folder')
 api.add_resource(DeleteFile, '/delete_file')
 api.add_resource(ShareFile, '/share_file')
+api.add_resource(UploadFile, '/upload_file')
+api.add_resource(UploadStream, '/upload_stream/<string:token>')
 
 if __name__ == '__main__':
     app.run(debug=True)

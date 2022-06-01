@@ -148,7 +148,9 @@ def faultyName(var : str):
     lower = var.lower()
     if lower == "users" or\
        lower == "tokens" or\
-       lower == "shares":
+       lower == "shares" or\
+       lower == "ustreams" or\
+       lower == "dstreams":
         raise Exception('string clashes with table names')
 
 def is_folder(path, cur : sqlite3.Cursor):
