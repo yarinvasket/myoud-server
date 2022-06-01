@@ -7,7 +7,8 @@ import time
 
 import bcrypt
 import pgpy
-from flask import Flask, jsonify, make_response, request
+from flask import (Flask, Response, jsonify, make_response, request,
+                   stream_with_context)
 from flask_restful import Api, Resource
 from pgpy.constants import (CompressionAlgorithm, HashAlgorithm, KeyFlags,
                             PubKeyAlgorithm, SymmetricKeyAlgorithm)
@@ -590,7 +591,7 @@ class UploadFile(Resource):
 
 class UploadStream(Resource):
     def post(self, token):
-#       Assure that every field is valid
+#       Assure that the token field is valid
         try:
             faultyName(token)
         except Exception as e:
@@ -632,6 +633,101 @@ class UploadStream(Resource):
 
         return 200
 
+class DownloadFile(Resource):
+    def post(self):
+#       Get input from request and assure that it is valid
+        try:
+            reqjson = request.json
+            token = reqjson['token']
+            path = reqjson['path']
+        except Exception as e:
+            logging.error('DownloadFile formatting: ' + str(e))
+            return make_response(jsonify(message='invalid format'), 400)
+
+#       Assure that every field is valid
+        try:
+            faultyName(token)
+            faultyPath(path)
+        except Exception as e:
+            logging.error('DownloadFile formatting: ' + str(e))
+            return make_response(jsonify(message='invalid format'), 400)
+
+#       Validate token
+        user_name, hashed_token = validate_token(token)
+        if (not user_name):
+            logging.error('DownloadFile: token ' + hashed_token + ' is invalid')
+            return make_response(jsonify(message='invalid token'), 400)
+
+#       Open a stream
+        stream_token = secrets.token_urlsafe(16)
+        hashed_stream_token = hash_token(stream_token)
+        actual_path = user_name + '/' + path
+        db, cur = connect_db()
+        cur.execute("insert into dstreams values (?, ?)",\
+            (hashed_stream_token, actual_path))
+        db.commit()
+
+#       Get the key and the file sig
+        dirs = path.split('/')
+        parent_dir = '/'.join(dirs[0:-2])
+        file_name = dirs[-1]
+        cur.execute("select key, filesig from :path where name=:name",\
+            {"path": parent_dir, "name": file_name})
+        file = cur.fetchall()
+        db.close()
+        if (not file):
+            logging.error('DownloadFile: path ' + actual_path + ' is invalid')
+            return make_response(jsonify(message='invalid path'), 404)
+        key = file[0][0]
+        filesig = file[0][1]
+
+#       Respond with the stream token
+        logging.info('DownloadFile: responded with stream token: ' + hashed_stream_token)
+        return make_response(jsonify(token=stream_token, key=key, filesig=filesig))
+
+class DownloadStream(Resource):
+    def post(self, token):
+#       Assure that the token field is valid
+        try:
+            faultyName(token)
+        except Exception as e:
+            logging.error('DownloadStream formatting: ' + str(e))
+            return make_response(jsonify(message='invalid format'), 400)
+
+#       Verify token
+        hashed_token = hash_token(token)
+        db, cur = connect_db()
+        cur.execute("select path from dstreams where token=:token",\
+            {"token": hashed_token})
+        file = cur.fetchall()
+        if (not file):
+            logging.error('DownloadStream: token is invalid')
+            return make_response(jsonify(message='invalid token'), 400)
+
+#       Extract file content
+        path = file[0][0]
+        dirs = path.split('/')
+        parent_dir = '/'.join(dirs[0:-2])
+        file_name = dirs[-1]
+        cur.execute("select content from :path where name=:name",\
+            {"path": parent_dir, "name": file_name})
+        content = cur.fetchall()
+        db.close()
+        if (not content):
+            logging.error('DownloadStream: path ' + path + ' is invalid')
+            return make_response(jsonify(message='invalid path'), 404)
+
+#       Stream iteration
+        @stream_with_context
+        def generate():
+            chunks = len(content) / chunk_size
+            for i in range(chunks):
+                yield content[i * chunk_size : (i + 1) * chunk_size - 1]
+            yield content[chunks * chunk_size :]
+
+#       Stream file
+        return Response(stream_with_context(generate()))
+
 api.add_resource(Register, '/register')
 api.add_resource(GetSalt, '/get_salt')
 api.add_resource(GetSalt2, '/get_salt2')
@@ -643,6 +739,8 @@ api.add_resource(DeleteFile, '/delete_file')
 api.add_resource(ShareFile, '/share_file')
 api.add_resource(UploadFile, '/upload_file')
 api.add_resource(UploadStream, '/upload_stream/<string:token>')
+api.add_resource(DownloadFile, '/download_file')
+api.add_resource(DownloadStream, '/download_stream/<string:token>')
 
 if __name__ == '__main__':
     app.run(debug=True)
