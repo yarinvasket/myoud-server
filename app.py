@@ -45,8 +45,11 @@ class Register(Resource):
 #       Assure that every field is valid
         try:
             faultyName(user_name)
+            faultyString(public_key)
+            faultyString(signature)
             faultyString(encrypted_private_key)
             faultyString(hashed_password)
+            faultyString(salt2)
             salt = hashed_password.split('$')[3][:22]
             public_key_decoded = base64.b64decode(public_key)
             signature_decoded = base64.b64decode(signature)
