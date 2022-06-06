@@ -7,7 +7,7 @@ import time
 lettersdigits = string.ascii_letters + string.digits + '_-'
 allowedName = set(lettersdigits)
 allowedPath = set(lettersdigits + '/')
-allowedChars = set(lettersdigits + './$')
+allowedChars = set(lettersdigits + './$+=')
 
 def connect_db():
     db = sqlite3.connect('database.db')
