@@ -50,7 +50,8 @@ class Register(Resource):
             faultyString(encrypted_private_key)
             faultyString(hashed_password)
             faultyString(salt2)
-            salt = hashed_password.split('$')[3][:22]
+            spletPassword = hashed_password.split('$')
+            salt = '$'.join(spletPassword[0:2] + [spletPassword[3][:22]])
             public_key_decoded = base64.b64decode(public_key)
             signature_decoded = base64.b64decode(signature)
         except Exception as e:
@@ -109,7 +110,7 @@ class Register(Resource):
 #       Finally, register the user
         cur.execute(register_user, (\
             user_name, dhashed_password, salt,\
-            public_key, encrypted_private_key, salt2\
+            salt2, public_key, encrypted_private_key\
         ))
         db.commit()
         db.close()
