@@ -103,8 +103,8 @@ class Register(Resource):
         dhashed_password = bcrypt.hashpw(bytes(hashed_password, 'utf-8'), bcrypt.gensalt())
 
 #       Create a file table for the user
-        cur.execute(create_dir,\
-                {"path": user_name})
+        cur.execute(create_dir %\
+                user_name)
 
 #       Finally, register the user
         cur.execute(register_user, (\
