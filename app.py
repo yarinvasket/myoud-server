@@ -255,14 +255,21 @@ class Logout(Resource):
             logging.error('Logout formatting: ' + str(e))
             return make_response(jsonify(message='invalid format'), 400)
 
-#       Hash the token to delete
-        hashed_token = hash_token(token)
+#       Validate token
+        user_name, hashed_token = validate_token(token)
+        if (not user_name):
+            logging.error('Logout: token ' + hashed_token + ' is invalid')
+            return make_response(jsonify(message='invalid token'), 400)
 
 #       Delete the token
         db, cur = connect_db()
         cur.execute("delete from tokens where token=:token",\
             {"token": hashed_token})
+        
+        db.commit()
+        db.close()
 
+        logging.info('Logout: user ' + user_name + ' logged out')
         return 200
 
 class GetPath(Resource):

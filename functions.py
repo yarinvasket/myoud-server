@@ -15,7 +15,7 @@ def connect_db():
     return db, cur
 
 def hash_token(token):
-    return hashlib.sha256(token).hexdigest()
+    return hashlib.sha256(bytes(token, 'utf-8')).hexdigest()
 
 def renew_token(timeout: int):
     return int(time.time()) + timeout
