@@ -212,9 +212,9 @@ class Login(Resource):
                 ' does not exist')
             return make_response(jsonify(message=\
                 "incorrect login credentials"), 400)
-        
+
 #       Verify the password
-        dhashed_password = bytes(user[0][1], 'utf-8')
+        dhashed_password = user[0][1]
         if not bcrypt.checkpw(bytes(hashed_password, 'utf-8'), dhashed_password):
             logging.error('Login: incorrect password to user ' + user_name)
             return make_response(jsonify(message=\
@@ -224,13 +224,13 @@ class Login(Resource):
         token = secrets.token_urlsafe(16)
 
 #       Hash and save the token
-        hashed_token = hashlib.sha256(token).hexdigest()
+        hashed_token = hashlib.sha256(bytes(token, 'utf-8')).hexdigest()
         if (session_timeout == 0):
             expiration = 0
         else:
             expiration = renew_token(session_timeout)
         cur.execute('insert into tokens values (?, ?, ?, ?)', \
-            hashed_token, user_name, expiration, session_timeout)
+            (hashed_token, user_name, expiration, session_timeout))
         db.commit()
         db.close()
 
