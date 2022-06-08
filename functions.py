@@ -6,7 +6,7 @@ import time
 
 lettersdigits = string.ascii_letters + string.digits + '_-'
 allowedName = set(lettersdigits)
-allowedPath = set(lettersdigits + '/')
+allowedPath = set(lettersdigits + './')
 allowedChars = set(lettersdigits + './$+=')
 
 def connect_db():
@@ -55,16 +55,18 @@ def validate_token(token):
 #   Check that the token is not expired
     expiration = user[0][2]
     if (0 < expiration < int(time.time())):
-        logging.error('Validate token: token ' + hashed_token + ' has expired in' + expiration)
+        logging.error('Validate token: token ' + hashed_token + ' has expired in ' + str(expiration))
         return False
+    
+    timeout = user[0][3]
 
 #   Renew the token
-    timeout = user[0][3]
-    new_expiration = renew_token(timeout)
-    cur.execute("update tokens set expiration=:expiration where token=:token",\
-        {"expiration": new_expiration, "token": hashed_token})
-    db.commit()
-    db.close()
+    if (timeout != 0):
+        new_expiration = renew_token(timeout)
+        cur.execute("update tokens set expiration=:expiration where token=:token",\
+            {"expiration": new_expiration, "token": hashed_token})
+        db.commit()
+        db.close()
 
     return user[0][1], hashed_token
 

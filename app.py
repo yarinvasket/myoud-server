@@ -682,8 +682,8 @@ class DownloadFile(Resource):
         dirs = path.split('/')
         parent_dir = '/'.join(dirs[0:-2])
         file_name = dirs[-1]
-        cur.execute("select key, filesig from :path where name=:name",\
-            {"path": parent_dir, "name": file_name})
+        cur.execute("select key, filesig from %s where name=:name" % parent_dir,\
+            {"name": file_name})
         file = cur.fetchall()
         db.close()
         if (not file):
@@ -697,7 +697,7 @@ class DownloadFile(Resource):
         return make_response(jsonify(token=stream_token, key=key, filesig=filesig))
 
 class DownloadStream(Resource):
-    def post(self, token):
+    def get(self, token):
 #       Assure that the token field is valid
         try:
             faultyName(token)
