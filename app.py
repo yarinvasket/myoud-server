@@ -51,7 +51,7 @@ class Register(Resource):
             faultyString(hashed_password)
             faultyString(salt2)
             spletPassword = hashed_password.split('$')
-            salt = '$'.join(spletPassword[0:2] + [spletPassword[3][:22]])
+            salt = '$'.join(spletPassword[0:3] + [spletPassword[3][:22]])
             public_key_decoded = base64.b64decode(public_key)
             signature_decoded = base64.b64decode(signature)
         except Exception as e:
