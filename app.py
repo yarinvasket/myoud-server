@@ -636,10 +636,11 @@ class UploadStream(Resource):
 
 #       Write data to file
         dirs = path.split('/')
-        parent_dir = '/'.join(dirs[0:-2])
+        parent_dir = '/'.join(dirs[0:-1])
         file_name = dirs[-1]
-        cur.execute("insert into ? values (?, ?, ?, ?, ?, ?, ?)",\
-            (parent_dir, file_name, f, int(time.time()), key, 0, pathsig, filesig))
+        cur.execute("insert into %s values (?, ?, ?, ?, ?, ?, ?)" % parent_dir,\
+            (file_name, f, int(time.time()), key, 0, pathsig, filesig))
+        db.commit()
         db.close()
 
         return 200
@@ -679,8 +680,8 @@ class DownloadFile(Resource):
         db.commit()
 
 #       Get the key and the file sig
-        dirs = path.split('/')
-        parent_dir = '/'.join(dirs[0:-2])
+        dirs = actual_path.split('/')
+        parent_dir = '/'.join(dirs[0:-1])
         file_name = dirs[-1]
         cur.execute("select key, filesig from %s where name=:name" % parent_dir,\
             {"name": file_name})
