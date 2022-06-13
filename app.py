@@ -105,8 +105,7 @@ class Register(Resource):
         dhashed_password = bcrypt.hashpw(bytes(hashed_password, 'utf-8'), bcrypt.gensalt())
 
 #       Create a file table for the user
-        cur.execute(create_dir %\
-                user_name)
+        create_folder(user_name, cur)
 
 #       Finally, register the user
         cur.execute(register_user, (\
@@ -404,9 +403,8 @@ class CreateFolder(Resource):
 
 #       Create the folder
         cur.execute("insert into ? values (?, ?, ?, ?, ?, ?, ?)",\
-            (parent_dir, folder_name, None, int(time.time()), key, 1, pathsig, None))
-        cur.execute(create_dir,\
-                {"path": actual_path})
+            (parent_dir, folder_name, int(time.time()), key, 1, pathsig, None))
+        create_folder(actual_path, cur)
         db.commit()
         db.close()
 
@@ -635,14 +633,18 @@ class UploadStream(Resource):
         pathsig = file[0][2]
         filesig = file[0][3]
 
-#       Write data to file
+#       Record file on db
         dirs = path.split('/')
         parent_dir = '/'.join(dirs[0:-1])
         file_name = dirs[-1]
-        cur.execute("insert into %s values (?, ?, ?, ?, ?, ?, ?)" % parent_dir,\
-            (file_name, f, int(time.time()), key, 0, pathsig, filesig))
+        cur.execute("insert into %s values (?, ?, ?, ?, ?, ?)" % parent_dir,\
+            (file_name, int(time.time()), key, 0, pathsig, filesig))
         db.commit()
         db.close()
+
+        file = open('files/' + path, 'wb')
+        file.write(f)
+        file.close()
 
         return 200
 
@@ -712,31 +714,28 @@ class DownloadStream(Resource):
         db, cur = connect_db()
         cur.execute("select path from dstreams where token=:token",\
             {"token": hashed_token})
-        file = cur.fetchall()
-        if (not file):
+        db.close()
+        path = cur.fetchall()
+        if (not path):
             logging.error('DownloadStream: token is invalid')
             return make_response(jsonify(message='invalid token'), 400)
 
 #       Extract file content
-        path = file[0][0]
-        dirs = path.split('/')
-        parent_dir = '/'.join(dirs[0:-1])
-        file_name = dirs[-1]
-        cur.execute("select content from %s where name=:name" % parent_dir,\
-            {"name": file_name})
-        content = cur.fetchall()
-        db.close()
-        if (not content):
+        path = path[0][0]
+        try:
+            file = open('files/' + path, 'rb')
+            f = file.read()
+        except:
             logging.error('DownloadStream: path ' + path + ' is invalid')
             return make_response(jsonify(message='invalid path'), 404)
 
 #       Stream iteration
         @stream_with_context
         def generate():
-            chunks = math.floor(len(content) / chunk_size)
+            chunks = math.floor(len(f) / chunk_size)
             for i in range(chunks):
-                yield content[i * chunk_size : (i + 1) * chunk_size - 1]
-            yield content[chunks * chunk_size :]
+                yield f[i * chunk_size : (i + 1) * chunk_size - 1]
+            yield f[chunks * chunk_size :]
 
 #       Stream file
         return Response(stream_with_context(generate()))

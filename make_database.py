@@ -1,4 +1,7 @@
 import sqlite3
+import os
+
+os.mkdir('files')
 
 db = sqlite3.connect('database.db')
 cur = db.cursor()

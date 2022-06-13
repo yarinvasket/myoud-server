@@ -1,8 +1,11 @@
 import hashlib
 import logging
+import os
 import sqlite3
 import string
 import time
+
+from queries import *
 
 lettersdigits = string.ascii_letters + string.digits + '_-'
 allowedName = set(lettersdigits)
@@ -107,8 +110,8 @@ def faultyString(var):
         if (c not in allowedChars):
             raise Exception('string is not in allowedChars')
 
-def faultyPath(var):
-    """Safe-checks the string for regex injection
+def faultyPath(var: str):
+    """Safe-checks the string for regex injection and ".."
 
     Parameters
     ----------
@@ -125,6 +128,9 @@ def faultyPath(var):
     for c in var:
         if (c not in allowedPath):
             raise Exception('string is not in allowedPath')
+    
+    if (var.find('/.') != -1):
+        raise Exception('dangerous path')
 
 def faultyName(var : str):
     """Safe-checks the string for path injection or sqli
@@ -160,7 +166,15 @@ def is_folder(path, cur : sqlite3.Cursor):
             {"path": path})
     return cur.fetchall()
 
-def delete_folder(path : str, cur : sqlite3.Cursor):
+def create_folder(path: str, cur: sqlite3.Cursor):
+#       Create a file table for the user
+        cur.execute(create_dir %\
+                path)
+
+#       Create folder in filesystem
+        os.mkdir('files/' + path)
+
+def delete_folder(path: str, cur: sqlite3.Cursor):
     """Deletes the folder and all of its subfiles in specified path. Must call db.commit() afterwards for this to take effect
 
     Parameters
