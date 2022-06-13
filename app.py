@@ -301,10 +301,15 @@ class GetPath(Resource):
         paths = path.split('/')
         if (paths[0] == "private"):
 #           Select all files that are the sub directory of path
-            actual_path = user_name + '/' + '/'.join(paths[1::])
+            if (len(paths) <= 1):
+                actual_path = user_name
+            else:
+                actual_path = user_name + '/' + '/'.join(paths[1:])
             db, cur = connect_db()
-            cur.execute("select name, date, key, isfolder, pathsig from :path",\
-                {"path": actual_path})
+#           cur.execute("select name, date, key, isfolder, pathsig from %s" %\
+#               actual_path)
+            cur.execute("select name, date, key, isfolder from %s" %\
+               actual_path)
             private = cur.fetchall()
             db.close()
             files = list()
@@ -315,8 +320,9 @@ class GetPath(Resource):
                 date = file[1]
                 key = file[2]
                 isfolder = file[3]
-                pathsig = file[4]
-                files += (name, date, key, isfolder, pathsig)
+#               pathsig = file[4]
+#               files += (name, date, key, isfolder, pathsig)
+                files += (name, date, key, isfolder)
             
 #           Respond with the files
             logging.info('GetPath: User ' + user_name + ' got path ' + path)
@@ -338,10 +344,11 @@ class GetPath(Resource):
                 date = file[1]
                 key = file[2]
                 isfolder = 0
-                sharesig = file[3]
+#               sharesig = file[3]
 #               Username of the sharer
                 username = paths[0]
-                files += (name, date, key, isfolder, sharesig, username)
+#               files += (name, date, key, isfolder, sharesig, username)
+                files += (name, date, key, isfolder, username)
 
             logging.info('GetPath: User ' + user_name + ' got path ' + path)
             return make_response(jsonify(files), 200)
