@@ -1,6 +1,7 @@
 import base64
 import hashlib
 import logging
+import math
 import secrets
 import sqlite3
 import time
@@ -719,10 +720,10 @@ class DownloadStream(Resource):
 #       Extract file content
         path = file[0][0]
         dirs = path.split('/')
-        parent_dir = '/'.join(dirs[0:-2])
+        parent_dir = '/'.join(dirs[0:-1])
         file_name = dirs[-1]
-        cur.execute("select content from :path where name=:name",\
-            {"path": parent_dir, "name": file_name})
+        cur.execute("select content from %s where name=:name" % parent_dir,\
+            {"name": file_name})
         content = cur.fetchall()
         db.close()
         if (not content):
@@ -732,7 +733,7 @@ class DownloadStream(Resource):
 #       Stream iteration
         @stream_with_context
         def generate():
-            chunks = len(content) / chunk_size
+            chunks = math.floor(len(content) / chunk_size)
             for i in range(chunks):
                 yield content[i * chunk_size : (i + 1) * chunk_size - 1]
             yield content[chunks * chunk_size :]
