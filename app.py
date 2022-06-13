@@ -498,9 +498,10 @@ class ShareFile(Resource):
 #       Assure that file exists
         db, cur = connect_db()
         actual_path = user_name + '/' + path
+        parent_dir = '/'.join(actual_path.split('/')[0:-1])
         file_name = path.split('/')[-1]
-        cur.execute("select name from :path where name=:name and isfolder=0",\
-            {"path": actual_path, "name": file_name})
+        cur.execute("select name from %s where name=:name and isfolder=0" % parent_dir,\
+            {"name": file_name})
         file = cur.fetchall()
         if (not file):
             logging.error('ShareFile: file ' + actual_path + ' doesn\'t exist')
@@ -757,6 +758,7 @@ api.add_resource(GetPath, '/get_path')
 api.add_resource(CreateFolder, '/create_folder')
 api.add_resource(DeleteFile, '/delete_file')
 api.add_resource(ShareFile, '/share_file')
+api.add_resource(GetPublicKey, '/get_public_key')
 api.add_resource(UploadFile, '/upload_file')
 api.add_resource(UploadStream, '/upload_stream/<string:token>')
 api.add_resource(DownloadFile, '/download_file')
