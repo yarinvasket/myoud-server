@@ -714,8 +714,8 @@ class DownloadStream(Resource):
         db, cur = connect_db()
         cur.execute("select path from dstreams where token=:token",\
             {"token": hashed_token})
-        db.close()
         path = cur.fetchall()
+        db.close()
         if (not path):
             logging.error('DownloadStream: token is invalid')
             return make_response(jsonify(message='invalid token'), 400)
@@ -725,6 +725,7 @@ class DownloadStream(Resource):
         try:
             file = open('files/' + path, 'rb')
             f = file.read()
+            file.close()
         except:
             logging.error('DownloadStream: path ' + path + ' is invalid')
             return make_response(jsonify(message='invalid path'), 404)
