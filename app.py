@@ -515,15 +515,15 @@ class ShareFile(Resource):
             return make_response(jsonify(message='user doesn\'t exist'), 404)
 
 #       Assure that file isn't already shared with user
-        cur.execute("select username from shares where username=:username and name=:name",\
-            {"username": username, "name": actual_path})
+        cur.execute("select username from shares where username=:username and path=:path",\
+            {"username": username, "path": actual_path})
         if (cur.fetchall()):
             logging.error('ShareFile: file ' + actual_path + ' already shared with user ' + username)
             return make_response(jsonify(message='file already shared with user'), 400)
 
 #       Share the file
-        cur.execute("insert into shares values (?, ?, ?, ?, ?)",\
-            (username, actual_path, int(time.time()), file_key, sharesig))
+        cur.execute("insert into shares values (?, ?, ?, ?, ?, ?)",\
+            (username, actual_path, file_name, int(time.time()), file_key, sharesig))
         db.commit()
         db.close()
 
@@ -684,8 +684,15 @@ class DownloadFile(Resource):
 #       Open a stream
         stream_token = secrets.token_urlsafe(16)
         hashed_stream_token = hash_token(stream_token)
-        actual_path = user_name + '/' + path
         db, cur = connect_db()
+        if path.split('/')[0] == 'private':
+            actual_path = user_name + '/' + '/'.join(path.split('/')[1:])
+        elif path.split('/')[0] == 'shared':
+            cur.execute("select path, key from shares where username=:username and name=:name", \
+                {"username": user_name, "name": path.split('/')[-1]})
+            share = cur.fetchall()
+            actual_path = share[0][0]
+            key = share[0][1]
         cur.execute("insert into dstreams values (?, ?)",\
             (hashed_stream_token, actual_path))
         db.commit()
@@ -701,7 +708,8 @@ class DownloadFile(Resource):
         if (not file):
             logging.error('DownloadFile: path ' + actual_path + ' is invalid')
             return make_response(jsonify(message='invalid path'), 404)
-        key = file[0][0]
+        if path.split('/')[0] == 'private':
+            key = file[0][0]
         filesig = file[0][1]
 
 #       Respond with the stream token

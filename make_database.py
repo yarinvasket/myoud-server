@@ -22,6 +22,7 @@ q2 = '''CREATE TABLE tokens(
 
 q3 = '''CREATE TABLE shares(
         username      text primary key,
+        path          text,
         name          text,
         date          integer,
         key           text,
