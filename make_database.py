@@ -21,7 +21,7 @@ q2 = '''CREATE TABLE tokens(
         timeout       integer)'''
 
 q3 = '''CREATE TABLE shares(
-        username      text primary key,
+        username      text,
         path          text,
         name          text,
         date          integer,

@@ -141,6 +141,7 @@ class GetSalt(Resource):
         db, cur = connect_db()
         cur.execute(get_user, {"username": user_name})
         user = cur.fetchall()
+        db.close()
         if (not user):
             logging.error('Get salt: user ' + user_name +\
                 ' does not exist')
@@ -173,6 +174,7 @@ class GetSalt2(Resource):
         db, cur = connect_db()
         cur.execute(get_user, {"username": user_name})
         user = cur.fetchall()
+        db.close()
         if (not user):
             logging.error('Get salt 2: user ' + user_name +\
                 ' does not exist')
@@ -552,12 +554,12 @@ class GetPublicKey(Resource):
         cur.execute("select pk from users where username=:username",\
             {"username": user_name})
         pk = cur.fetchall()
+        db.close()
         if (not pk):
             logging.error('GetPublicKey: user ' + user_name + ' doesn\'t exist')
             return make_response(jsonify(message='user doesn\'t exist'), 404)
 
 #       Return the public key
-        db.close()
         pk = pk[0][0]
         logging.info('GetPublicKey: returned public key of user ' + user_name)
         return make_response(jsonify(pk=pk), 200)
